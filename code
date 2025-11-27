@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooksy - Share Your Recipes</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #fff8f0;
+            color: #333;
+        }
+
+        header {
+            background-color: #ff6f61;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+        }
+
+        nav {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        nav a {
+            color: #ff6f61;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .recipe-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .recipe-card h2 {
+            color: #ff6f61;
+            margin-bottom: 10px;
+        }
+
+        .recipe-card p {
+            line-height: 1.6;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #ff6f61;
+            color: white;
+            margin-top: 40px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .recipe-card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cooksy</h1>
+        <p>Share and discover amazing recipes!</p>
+    </header>
+
+    <nav>
+        <a href="#recipes">Recipes</a>
+        <a href="#submit">Submit Recipe</a>
+        <a href="#about">About</a>
+    </nav>
+
+    <div class="container" id="recipes">
+        <div class="recipe-card">
+            <h2>Spaghetti Carbonara</h2>
+            <p><strong>Ingredients:</strong> Spaghetti, eggs, parmesan, pancetta, black pepper</p>
+            <p><strong>Instructions:</strong> Boil pasta. Cook pancetta. Mix eggs and cheese. Combine everything off heat to avoid scrambling eggs.</p>
+        </div>
+
+        <div class="recipe-card">
+            <h2>Chocolate Chip Cookies</h2>
+            <p><strong>Ingredients:</strong> Flour, sugar, butter, eggs, chocolate chips</p>
+            <p><strong>Instructions:</strong> Mix ingredients, shape cookies, bake at 180°C for 10-12 minutes.</p>
+        </div>
+    </div>
+
+    <div class="container" id="submit">
+        <div class="recipe-card">
+            <h2>Submit Your Recipe</h2>
+            <form id="recipeForm">
+                <label for="name">Recipe Name:</label><br>
+                <input type="text" id="name" name="name" placeholder="Enter recipe name" required><br><br>
+
+                <label for="ingredients">Ingredients:</label><br>
+                <textarea id="ingredients" name="ingredients" rows="4" placeholder="List ingredients" required></textarea><br><br>
+
+                <label for="instructions">Instructions:</label><br>
+                <textarea id="instructions" name="instructions" rows="4" placeholder="Enter instructions" required></textarea><br><br>
+
+                <button id="submitBtn" type="submit" style="background-color:#ff6f61; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Submit Recipe</button>
+                <div id="formMsg" style="margin-top:10px;color:#006400;font-weight:600;display:none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <footer id="about">
+        <p>&copy; 2025 Cooksy. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Simple sanitizer to avoid HTML injection when adding user-submitted content
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
+        }
+
+        // LocalStorage key
+        const STORAGE_KEY = 'cooksy_recipes_v1';
+
+        function loadRecipes() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return [];
+            try {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) return arr;
+            } catch (e) {
+                console.error('Failed to parse stored recipes', e);
+            }
+            return [];
+        }
+
+        function saveRecipes(arr) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+            } catch (e) {
+                console.error('Failed to save recipes', e);
+            }
+        }
+
+        function createRecipeCard(recipe) {
+            const card = document.createElement('div');
+            card.className = 'recipe-card';
+
+            const h2 = document.createElement('h2');
+            h2.textContent = recipe.name || '';
+            card.appendChild(h2);
+
+            const ing = document.createElement('p');
+            const ingStrong = document.createElement('strong');
+            ingStrong.textContent = 'Ingredients:';
+            ing.appendChild(ingStrong);
+            ing.appendChild(document.createTextNode(' ' + (recipe.ingredients || '')));
+            card.appendChild(ing);
+
+            const inst = document.createElement('p');
+            const instStrong = document.createElement('strong');
+            instStrong.textContent = 'Instructions:';
+            inst.appendChild(instStrong);
+            inst.appendChild(document.createTextNode(' ' + (recipe.instructions || '')));
+            card.appendChild(inst);
+
+            return card;
+        }
+
+        function renderAllRecipes() {
+            const container = document.getElementById('recipes');
+            // Remove existing user-submitted cards (keep the two built-in ones)
+            // We'll append user cards after the built-in ones. Built-in cards are the first two child nodes.
+            // To be robust, remove previously appended user cards by selecting elements with data-user="true" and removing them.
+            const existingUser = container.querySelectorAll('[data-user="true"]');
+            existingUser.forEach(n => n.remove());
+
+            const recipes = loadRecipes();
+            recipes.forEach(r => {
+                const card = createRecipeCard(r);
+                card.setAttribute('data-user', 'true');
+                container.appendChild(card);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllRecipes();
+
+            const form = document.getElementById('recipeForm');
+            const msg = document.getElementById('formMsg');
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const name = (document.getElementById('name').value || '').trim();
+                const ingredients = (document.getElementById('ingredients').value || '').trim();
+                const instructions = (document.getElementById('instructions').value || '').trim();
+
+                if (!name || !ingredients || !instructions) {
+                    msg.style.display = 'block';
+                    msg.style.color = '#b22222';
+                    msg.textContent = 'Please fill out all fields.';
+                    return;
+                }
+
+                // Append to storage
+                const recipes = loadRecipes();
+                const newRecipe = { name, ingredients, instructions, createdAt: Date.now() };
+                recipes.push(newRecipe);
+                saveRecipes(recipes);
+
+                // Append to DOM
+                const container = document.getElementById('recipes');
+                const card = createRecipeCard(newRecipe);
+                card.setAttribute('data-user', 'true');
+                container.appendChild(card);
+
+                // Clear form and show success
+                form.reset();
+                msg.style.color = '#006400';
+                msg.style.display = 'block';
+                msg.textContent = 'Recipe submitted! Saved locally in your browser.';
+
+                // Hide message after a few seconds
+                setTimeout(() => { msg.style.display = 'none'; }, 3500);
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
